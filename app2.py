@@ -76,8 +76,8 @@ div[role="alert"]{
 """, unsafe_allow_html=True)
 
 # ===== تحميل الموديل والفيكتورايزر =====
-vectorizer = joblib.load("tfidf_vectorizer_layan.pkl")
-model = joblib.load("phishing_model_layan.pkl")
+vectorizer = joblib.load("tfidf_vectorizer.pkl")
+model = joblib.load("spam_classifire.pkl")
 
 # ===== الواجهة =====
 st.markdown("<h1>🚀 مصنّف الإيميلات (Spam / Not Spam)</h1>", unsafe_allow_html=True)
