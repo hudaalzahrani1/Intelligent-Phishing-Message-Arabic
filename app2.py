@@ -1,4 +1,4 @@
-# app_spam.py
+# app2.py
 import streamlit as st
 import pickle
 import numpy as np
@@ -7,13 +7,12 @@ import time
 # إعداد الصفحة
 st.set_page_config(page_title="📧 مصنّف الإيميلات", page_icon="📧", layout="centered")
 
-# ===== CSS أنيق + نصوص فاتحة بكل العناصر =====
+# ===== تنسيقات CSS =====
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
 * { font-family: 'Tajawal', sans-serif !important; }
 
-/* خلفية وتدرّج خفيف */
 .stApp {
   background: linear-gradient(135deg, #0f172a, #1e293b, #0f172a);
   background-size: 400% 400%;
@@ -26,7 +25,6 @@ st.markdown("""
   100% {background-position:0% 50%}
 }
 
-/* كل النصوص */
 h1,h2,h3,h4,p,span,li,strong,em { color:#F8FAFC !important; }
 label, .stTextArea label, .stTextInput label { color:#F8FAFC !important; opacity:1 !important; }
 
@@ -36,7 +34,6 @@ h1 {
   text-shadow:0 0 14px #3b82f6;
 }
 
-/* صندوق الإدخال */
 .stTextArea textarea{
   background:#223043 !important;
   color:#ffffff !important;
@@ -48,7 +45,6 @@ h1 {
   color:#cfe1ff !important; opacity:1 !important;
 }
 
-/* الزر */
 .stButton>button{
   background: linear-gradient(90deg, #3b82f6, #06b6d4);
   color:#ffffff !important; border:none; border-radius:25px;
@@ -56,7 +52,6 @@ h1 {
 }
 .stButton>button:hover{ transform:scale(1.05); box-shadow:0 0 20px rgba(59,130,246,.6); }
 
-/* بطاقة النتيجة */
 .result-card{
   border-radius:18px; padding:24px; margin-top:25px;
   font-size:22px; font-weight:800; text-align:center;
@@ -66,7 +61,6 @@ h1 {
 .danger { background: linear-gradient(135deg, #f43f5e, #ef4444); color:#ffffff !important; box-shadow:0 0 18px rgba(239,68,68,.35); }
 @keyframes fadeInUp{ from{opacity:0; transform:translateY(25px)} to{opacity:1; transform:translateY(0)} }
 
-/* صناديق التنبيه */
 div[role="alert"]{
   background: rgba(148,163,184,0.12) !important;
   color:#F8FAFC !important;
@@ -75,15 +69,16 @@ div[role="alert"]{
 </style>
 """, unsafe_allow_html=True)
 
-# ===== تحميل الموديل =====
+# ===== تحميل الموديل بالـ pickle =====
 with open("spam_classifier.pkl", "rb") as f:
-  data = pickle.load(f)
+    data = pickle.load(f)
+
 vectorizer, model = data["vectorizer"], data["model"]
 
 # ===== الواجهة =====
-st.markdown("<h1>🚀 مصنّف الإيميلات (Spam / Not Spam)</h1>", unsafe_allow_html=True)
+st.markdown("<h1>🚀 مصنّف الإيميلات (احتيالي / عادي)</h1>", unsafe_allow_html=True)
 
-email_text = st.text_area("✍️ أدخل نص الإيميل هنا:", height=180, placeholder="اكتب الإيميل المراد فحصه...")
+email_text = st.text_area("✍️ أدخل نص الإيميل:", height=180, placeholder="اكتب الإيميل المراد تحليله...")
 
 if st.button("🔮 تصنيف الإيميل"):
     if not email_text.strip():
@@ -91,42 +86,42 @@ if st.button("🔮 تصنيف الإيميل"):
     else:
         X = vectorizer.transform([email_text])
 
-        # احتمال السبام
+        # حساب الاحتمالية
         if hasattr(model, "predict_proba"):
-            prob_spam = model.predict_proba(X)[0][1]
+            prob_phishing = model.predict_proba(X)[0][1]
         else:
             score = model.decision_function(X)
-            prob_spam = 1 / (1 + np.exp(-score[0]))
+            prob_phishing = 1 / (1 + np.exp(-score[0]))
 
-        pred = model.predict(X)[0]  # 1=Spam, 0=Not Spam
+        pred = model.predict(X)[0]  # 1 = احتيالي، 0 = عادي
 
         with st.spinner("⏳ جاري تحليل الإيميل..."):
             time.sleep(1.0)
 
-        # النتيجة + سبب
+        # عرض النتيجة
         if pred == 1:
             st.markdown(
-                f"<div class='result-card danger'>🚨 Spam<br>نسبة الثقة: {prob_spam*100:.1f}%</div>",
+                f"<div class='result-card danger'>🚨 احتيالي<br>نسبة الثقة: {prob_phishing*100:.1f}%</div>",
                 unsafe_allow_html=True
             )
-            st.info("📌 سبب الارتفاع: الموديل لاحظ وجود كلمات أو تراكيب مرتبطة بالرسائل الاحتيالية "
-                    "مثل الروابط المشبوهة أو العبارات التسويقية القوية.")
-            st.info("💡 إذا كانت النسبة ≥ 80% فهذا مؤشر قوي أن الإيميل احتيالي ويجب الحذر.")
+            st.info("📌 السبب: الموديل اكتشف كلمات أو تراكيب مشبوهة "
+                    "مثل الروابط الغريبة أو العبارات التسويقية القوية.")
+            st.info("💡 إذا كانت النسبة ≥ 80% فهذا مؤشر قوي على أن الإيميل احتيالي.")
         else:
-            conf_not = (1 - prob_spam) * 100
+            conf_legit = (1 - prob_phishing) * 100
             st.markdown(
-                f"<div class='result-card success'>✅ Not Spam<br>نسبة الثقة: {conf_not:.1f}%</div>",
+                f"<div class='result-card success'>✅ عادي<br>نسبة الثقة: {conf_legit:.1f}%</div>",
                 unsafe_allow_html=True
             )
-            st.info("📌 سبب النتيجة: النص لا يحتوي مؤشرات قوية للسبام، الأسلوب رسمي وأقرب لرسائل طبيعية.")
-            st.info("💡 حتى لو النسبة منخفضة، الأفضل التحقق يدويًا عند الشك.")
+            st.info("📌 السبب: النص لا يحتوي على مؤشرات قوية للاحتيال، والأسلوب أقرب للرسائل الطبيعية.")
+            st.info("💡 مع ذلك يفضل التحقق يدويًا إذا كان هناك شك.")
 
-# ===== تذييل =====
+# ===== التذييل =====
 st.markdown(
     """
     <hr style="margin-top:30px; margin-bottom:10px; border: 1px solid #334155;" />
     <div style="text-align:center; font-size:14px; color:#94A3B8;">
-        👩‍💻 Developed by: <b>Huda, Layan, Rimas, Leena</b>
+        👩‍💻 تم التطوير بواسطة: <b>هدى، ليان، ريماس، لينا</b>
     </div>
     """,
     unsafe_allow_html=True
