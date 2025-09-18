@@ -3,6 +3,7 @@ import streamlit as st
 import pickle
 import numpy as np
 import time
+import os
 
 # إعداد الصفحة
 st.set_page_config(page_title="📧 مصنّف الإيميلات", page_icon="📧", layout="centered")
@@ -69,11 +70,22 @@ div[role="alert"]{
 </style>
 """, unsafe_allow_html=True)
 
-# ===== تحميل الموديل بالـ pickle =====
-with open("spam_classifier.pkl", "rb") as f:
-    data = pickle.load(f)
+# ===== تحميل الموديل والـ vectorizer =====
+vectorizer, model = None, None
 
-vectorizer, model = data["vectorizer"], data["model"]
+try:
+    # جرّب إذا الملف فيه dict
+    with open("spam_classifier.pkl", "rb") as f:
+        data = pickle.load(f)
+    if isinstance(data, dict) and "vectorizer" in data and "model" in data:
+        vectorizer, model = data["vectorizer"], data["model"]
+    else:
+        # إذا ما كان dict → حمّل كل واحد لحاله
+        with open("tfidf_vectorizer.pkl", "rb") as f:
+            vectorizer = pickle.load(f)
+        model = data  # الملف spam_classifier.pkl فيه الموديل فقط
+except Exception as e:
+    st.error(f"⚠️ خطأ في تحميل الملفات: {e}")
 
 # ===== الواجهة =====
 st.markdown("<h1>🚀 مصنّف الإيميلات (احتيالي / عادي)</h1>", unsafe_allow_html=True)
@@ -83,6 +95,8 @@ email_text = st.text_area("✍️ أدخل نص الإيميل:", height=180, pl
 if st.button("🔮 تصنيف الإيميل"):
     if not email_text.strip():
         st.warning("⚠️ رجاءً اكتب نص الإيميل أولاً")
+    elif vectorizer is None or model is None:
+        st.error("❌ لم يتم تحميل الموديل أو الـ vectorizer بشكل صحيح")
     else:
         X = vectorizer.transform([email_text])
 
@@ -106,15 +120,13 @@ if st.button("🔮 تصنيف الإيميل"):
             )
             st.info("📌 السبب: الموديل اكتشف كلمات أو تراكيب مشبوهة "
                     "مثل الروابط الغريبة أو العبارات التسويقية القوية.")
-            st.info("💡 إذا كانت النسبة ≥ 80% فهذا مؤشر قوي على أن الإيميل احتيالي.")
         else:
             conf_legit = (1 - prob_phishing) * 100
             st.markdown(
                 f"<div class='result-card success'>✅ عادي<br>نسبة الثقة: {conf_legit:.1f}%</div>",
                 unsafe_allow_html=True
             )
-            st.info("📌 السبب: النص لا يحتوي على مؤشرات قوية للاحتيال، والأسلوب أقرب للرسائل الطبيعية.")
-            st.info("💡 مع ذلك يفضل التحقق يدويًا إذا كان هناك شك.")
+            st.info("📌 السبب: النص لا يحتوي على مؤشرات قوية للاحتيال.")
 
 # ===== التذييل =====
 st.markdown(
