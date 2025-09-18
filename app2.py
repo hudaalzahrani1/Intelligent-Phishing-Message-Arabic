@@ -1,6 +1,6 @@
 # app_spam.py
 import streamlit as st
-import joblib
+import pickle
 import numpy as np
 import time
 
@@ -75,9 +75,10 @@ div[role="alert"]{
 </style>
 """, unsafe_allow_html=True)
 
-# ===== تحميل الموديل والفيكتورايزر =====
-vectorizer = joblib.load("tfidf_vectorizer.pkl")
-model = joblib.load("spam_classifire.pkl")
+# ===== تحميل الموديل =====
+with open("spam_classifier.pkl", "rb") as f:
+  data = pickle.load(f)
+vectorizer, model = data["vectorizer"], data["model"]
 
 # ===== الواجهة =====
 st.markdown("<h1>🚀 مصنّف الإيميلات (Spam / Not Spam)</h1>", unsafe_allow_html=True)
@@ -108,14 +109,17 @@ if st.button("🔮 تصنيف الإيميل"):
                 f"<div class='result-card danger'>🚨 Spam<br>نسبة الثقة: {prob_spam*100:.1f}%</div>",
                 unsafe_allow_html=True
             )
-            st.info("📌 السبب: الموديل لاحظ كلمات أو تراكيب مرتبطة بالرسائل الاحتيالية.")
+            st.info("📌 سبب الارتفاع: الموديل لاحظ وجود كلمات أو تراكيب مرتبطة بالرسائل الاحتيالية "
+                    "مثل الروابط المشبوهة أو العبارات التسويقية القوية.")
+            st.info("💡 إذا كانت النسبة ≥ 80% فهذا مؤشر قوي أن الإيميل احتيالي ويجب الحذر.")
         else:
             conf_not = (1 - prob_spam) * 100
             st.markdown(
                 f"<div class='result-card success'>✅ Not Spam<br>نسبة الثقة: {conf_not:.1f}%</div>",
                 unsafe_allow_html=True
             )
-            st.info("📌 السبب: النص لا يحتوي مؤشرات قوية للسبام.")
+            st.info("📌 سبب النتيجة: النص لا يحتوي مؤشرات قوية للسبام، الأسلوب رسمي وأقرب لرسائل طبيعية.")
+            st.info("💡 حتى لو النسبة منخفضة، الأفضل التحقق يدويًا عند الشك.")
 
 # ===== تذييل =====
 st.markdown(
